@@ -298,14 +298,14 @@ function processMsg(m, isNew) {
   conv.lastMsg = m.role === 'user' ? m.text : '(toi) ' + m.text;
   conv.lastTime = m.created_at ? new Date(m.created_at).toLocaleTimeString('fr', { hour: '2-digit', minute: '2-digit' }) : '';
   if (isNew) {
-  if (m.role === 'user') {
-    if (activeConv === cid) appendMsg(m);
-    else { conv.unread++; showNotif(cid); }
-    if (document.hidden) { document.title = '🔴 Nouveau message !'; setTimeout(() => document.title = 'Admin', 3000); }
-    startAutoReplyTimer(cid);
-  } else if (activeConv === cid) appendMsg(m);
-}
-
+    if (m.role === 'user') {
+      if (activeConv === cid) appendMsg(m);
+      else { conv.unread++; showNotif(cid); }
+      if (document.hidden) { document.title = '🔴 Nouveau message !'; setTimeout(() => document.title = 'Admin', 3000); }
+      startAutoReplyTimer(cid);
+      // Removed duplicate second call
+    } else if (activeConv === cid) appendMsg(m);
+  }
 }
 
 function renderConvList() {
@@ -430,9 +430,27 @@ async function sendReply() {
   const text = input.value.trim();
   if (!text) return;
   input.value = '';
+
   clearTimeout(autoReplyTimers[activeConv]);
-  cancelAutoReplyTimer(activeConv);
-  await sb.from('messages').insert({ role: 'ai', text, conv_id: activeConv });
+  // Removed call to cancelAutoReplyTimer(activeConv) - function does not exist
+
+  try {
+    const { data, error } = await sb.from('messages').insert({ role: 'ai', text, conv_id: activeConv });
+    if (error) {
+      console.error('Error inserting message:', error);
+      return;
+    }
+    // Append message instantly with the returned data (assuming the insert returns the inserted row)
+    if (data && data.length) {
+      appendMsg(data[0]);
+      conversations[activeConv].msgs.push(data[0]);  // Keep state consistent
+      conversations[activeConv].lastMsg = '(toi) ' + data[0].text;
+      conversations[activeConv].lastTime = data[0].created_at ? new Date(data[0].created_at).toLocaleTimeString('fr', { hour: '2-digit', minute: '2-digit' }) : '';
+      renderConvList();
+    }
+  } catch (err) {
+    console.error('sendReply error:', err);
+  }
 }
 
 async function sendCmd(cmd) {
