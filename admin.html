@@ -298,14 +298,14 @@ function processMsg(m, isNew) {
   conv.lastMsg = m.role === 'user' ? m.text : '(toi) ' + m.text;
   conv.lastTime = m.created_at ? new Date(m.created_at).toLocaleTimeString('fr', { hour: '2-digit', minute: '2-digit' }) : '';
   if (isNew) {
-    if (m.role === 'user') {
-      if (activeConv === cid) appendMsg(m);
-      else { conv.unread++; showNotif(cid); }
-      if (document.hidden) { document.title = '🔴 Nouveau message !'; setTimeout(() => document.title = 'Admin', 3000); }
-      startAutoReplyTimer(cid);
-      startAutoReplyTimer(cid);
-    } else if (activeConv === cid) appendMsg(m);
-  }
+  if (m.role === 'user') {
+    if (activeConv === cid) appendMsg(m);
+    else { conv.unread++; showNotif(cid); }
+    if (document.hidden) { document.title = '🔴 Nouveau message !'; setTimeout(() => document.title = 'Admin', 3000); }
+    startAutoReplyTimer(cid);
+  } else if (activeConv === cid) appendMsg(m);
+}
+
 }
 
 function renderConvList() {
